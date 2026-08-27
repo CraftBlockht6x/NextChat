@@ -3,59 +3,36 @@ name: Build Next.js Project
 on:
   push:
     branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
-  workflow_dispatch:  # 支持手动触发
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     
-    strategy:
-      matrix:
-        node-version: [18.x]
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'npm'
-      
+          node-version: '18'
+          
       - name: Install dependencies
-        run: npm ci  # 比 npm install 更快更稳定
-      
+        run: npm ci
+        
       - name: Build project
         run: npm run build
         env:
-          NODE_OPTIONS: "--max-old-space-size=4096"  # GitHub 内存充足，给 4GB
+          NODE_OPTIONS: "--max-old-space-size=4096"
       
-      - name: List build output
-        run: ls -la .next/
+      - name: Package build
+        run: |
+          tar -czf build.tar.gz .next public package.json package-lock.json next.config.js 2>/dev/null || true
       
-      - name: Upload build artifacts
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: nextjs-build
-          path: |
-            .next/
-            public/
-            package.json
-            package-lock.json
-            next.config.js
-            .env.example
-          retention-days: 30  # 产物保留30天
-      
-      - name: Create deployment package
-        run: |
-          tar -czf build.tar.gz .next public package.json package-lock.json next.config.js
-      
-      - name: Upload deployment package
-        uses: actions/upload-artifact@v4
-        with:
-          name: deployment-package
           path: build.tar.gz
           retention-days: 30
